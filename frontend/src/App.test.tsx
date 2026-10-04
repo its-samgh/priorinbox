@@ -6,7 +6,8 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import App, { number } from "./main";
+import App from "./App";
+import { number } from "./format";
 
 afterEach(() => {
   cleanup();

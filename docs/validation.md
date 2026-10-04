@@ -12,6 +12,8 @@ CI is configured for Linux, Python 3.12 and Node 22; a hosted CI run has not occ
 | npm dependency audit | Zero known vulnerabilities after updating Vitest |
 | `make fixture` | Both loopback services started; all 12 synthetic demo messages processed |
 | Browser workflows | Inbox, activity, settings save/reload, message details, labeling, analytics verified |
+| Clean browser load | No console errors after separating React bootstrap from the app component |
+| Built single-server mode | FastAPI served the built dashboard and API successfully |
 | Keyboard interaction | Escape closes message details; focus returns to message |
 | Responsive check | Narrow layout inspected; document width and scroll width both 375 px |
 | Screenshot | Actual synthetic dashboard saved in `docs/screenshots/fixture-inbox.jpg` |
