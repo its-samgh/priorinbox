@@ -1,0 +1,24 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: make install
+      - run: make lint typecheck test build
+      - name: Exercise benchmark mechanics (no real inference claims)
+        run: |
+          .venv/bin/python -m benchmarks.run --dataset benchmarks/data/synthetic.jsonl --pipeline baseline_llm --fixture
+          .venv/bin/python -m benchmarks.run --dataset benchmarks/data/synthetic.jsonl --pipeline two_stage --fixture

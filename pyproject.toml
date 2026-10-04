@@ -1,0 +1,20 @@
+[project]
+name = "priorinbox"
+version = "0.1.0"
+description = "Privacy-first local AI message triage powered by Ollama."
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "pydantic-settings>=2.7,<3", "sqlalchemy>=2.0,<3", "httpx>=0.28,<1", "desktop-notifier>=6,<7"]
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1", "mypy>=1.15,<2"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["backend/tests"]
+[tool.ruff]
+line-length = 100
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+ignore_missing_imports = true
+files = ["backend", "benchmarks", "scripts"]
