@@ -16,6 +16,11 @@ def main() -> None:
     # Keep demo data away from the user's real inbox database.
     env["PRIOR_DATABASE_PATH"] = "data/fixture.sqlite3" if args.fixture else "data/demo.sqlite3"
     processes: list[subprocess.Popen] = []
+
+    def stop(_signum, _frame):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, stop)
     try:
         processes.append(
             subprocess.Popen(
@@ -49,11 +54,15 @@ def main() -> None:
         pass
     finally:
         for process in processes:
-            if process.poll() is None:
+            try:
                 if os.name == "nt":
-                    process.terminate()
+                    if process.poll() is None:
+                        process.terminate()
                 else:
+                    # npm can exit before its Vite child; terminate the owned group too.
                     os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
         for process in processes:
             try:
                 process.wait(timeout=5)

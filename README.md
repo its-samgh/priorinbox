@@ -15,9 +15,10 @@ and raises local desktop notifications. Run a synthetic inbox without Instagram,
 import your own messages, or connect an eligible Instagram professional account
 through Meta's official API.
 
-**Status:** working local MVP with tests and reproducible benchmark tooling. Instagram
-is experimental and not live-account verified. No measured AI performance claims
-are published yet: the development machine had Ollama running but no model installed.
+**Status:** working local MVP with 47 passing automated tests and real local Ollama
+benchmarks on 210 synthetic messages. Results and evaluation limits are below.
+Instagram is experimental and not live-account verified. Desktop delivery requires
+OS authorization; it was denied for the development Python app on macOS.
 Fixture mode is a UI and integration demonstration, not an AI evaluation.
 
 ## See it locally
@@ -27,7 +28,7 @@ Linux/macOS are the primary development targets. On Windows use equivalent comma
 in the Makefile; desktop notification support depends on your OS/session.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/priorinbox.git
+git clone https://github.com/its-samgh/priorinbox.git
 cd priorinbox
 make install
 cp .env.example .env
@@ -59,11 +60,13 @@ hosted inference fallbacks, API keys for AI providers or outgoing reply actions.
 
 ### Dashboard screenshot
 
-![Actual fixture dashboard](docs/screenshots/fixture-inbox.jpg)
+![Actual local AI dashboard](docs/screenshots/local-ai-inbox.jpg)
 
-Captured from the running app with synthetic messages and the fixture banner visible.
-To refresh it, run `make fixture` and capture the actual page. Never capture or commit
-real messages. The displayed verdicts and timing are fixture data, not AI results.
+Captured from `make demo`: 12 invented messages classified using local qwen2.5:3b.
+The MOCK badge identifies synthetic ingestion; inference and latency are real. The
+notification warning records the actual OS permission failure. Never capture or commit
+private messages. A [fixture-only screenshot](docs/screenshots/fixture-inbox.jpg) is
+also included; its verdicts and timing are not AI results.
 
 ## What is included
 
@@ -203,7 +206,8 @@ benchmark dataset for evaluating conversations with both directions.
 The public [synthetic dataset](benchmarks/data/README.md) contains **210 invented
 English examples**, including requests, spam, reactions and contextual counterexamples.
 Every row carries a binary label, category and frozen context. Labels never enter
-the model prompt. Both pipelines use the same configuration and data hash.
+the model prompt. Both pipelines use the same configuration and data hash. Reports also record the
+local model digest, Ollama version and classifier code hash, which must match.
 
 ```bash
 .venv/bin/python -m benchmarks.run \
@@ -249,8 +253,47 @@ real-world quality; evaluate a separately labeled holdout set for that.
 
 ### Actual benchmark results
 
+Measured on an Apple M1 Pro MacBook Pro with 16 GB RAM on 2026-10-05, using
+`qwen2.5:3b`, threshold 0.65 and up to four context messages.
+
+Development note: the initial score guidance measured 60% recall at the 0.65 threshold.
+Diagnostics showed ordinary information questions being treated as casual. The revised
+guidance explicitly distinguishes actionability from urgency and gives score ranges.
+The same public set informed this debugging, so the table is a development challenge
+result, **not held-out validation**. The original pair is retained locally under
+`benchmarks/results/initial-prompt/`. Evaluate a separately labeled holdout before
+claiming real-world accuracy.
+
 <!-- benchmark-results:start -->
-No real Ollama benchmark has been run. No latency, recall or speedup claims are available.
+# Measured pipeline comparison
+
+Dataset: synthetic; N=210; model: qwen2.5:3b.
+Single sequential runs; model warm state uncontrolled. Repeat in alternating order.
+
+Ollama version: 0.34.4; model digest: `357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b`.
+Classifier SHA-256: `3327e0cddda946ee83a61785888b2b63c7a70b9b4abd5423c59b4c670fd9d9d8`.
+Machine: Darwin arm64; Python 3.14.7.
+
+| Metric | Baseline | Two-stage |
+|---|---:|---:|
+| messages_processed | 210.00 | 210.00 |
+| llm_calls | 210.00 | 201.00 |
+| filtered_before_llm_pct | 0.00 | 4.29 |
+| total_inference_ms | 353257.56 | 341436.68 |
+| p50_latency_ms | 1520.42 | 1529.20 |
+| p95_latency_ms | 2487.37 | 2435.86 |
+| throughput_per_second | 0.59 | 0.61 |
+| precision | 0.95 | 0.95 |
+| recall | 0.86 | 0.86 |
+| f1 | 0.90 | 0.90 |
+| false_negative_rate | 0.14 | 0.14 |
+| notification_reduction_pct | 31.43 | 31.43 |
+
+Ollama call reduction: 4.29%.
+p95 latency reduction: 2.07%.
+Throughput ratio: 1.03×.
+Notification reduction is versus notifying on every message, not versus baseline.
+Precision, recall, F1 and false-negative rate are fractions. N/A is undefined.
 <!-- benchmark-results:end -->
 
 `comparison.md` is generated automatically from the two measured result files.
@@ -294,22 +337,11 @@ docs/          design, Instagram limitations, validation
 The current API scans stored rows for analytics/context and the UI shows the latest
 500 messages. This is suitable for a local prototype, not an unbounded archive.
 One worker is supported. OS notification delivery is best effort, dependent on OS
-permissions/session support. Closing the app pauses monitoring. This is not an
+permissions/session support. Stopping the backend pauses monitoring. This is not an
 emergency monitoring system. Scores can be wrong; keep reviewing your source inbox.
 
-## Publish to GitHub
+## Public repository
 
-The development host's installed `gh` returned `bad CPU type in executable` during
-`gh auth status`, so authentication could not be checked and no repository was
-published. After installing a GitHub CLI build compatible with your machine:
-
-```bash
-gh auth login
-gh auth status
-gh repo create priorinbox --public --source=. --remote=origin \
-  --description 'Privacy-first local AI message triage powered by Ollama.' --push
-gh repo edit --add-topic ollama,local-ai,llm,fastapi,react,privacy,message-classification
-```
-
-Review staged files for private content before publishing. Contribution instructions
-are in [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under [MIT](LICENSE).
+[its-samgh/priorinbox](https://github.com/its-samgh/priorinbox) is published publicly
+with the MIT license, GitHub Actions and issue templates. Contributions are welcome;
+see [CONTRIBUTING.md](CONTRIBUTING.md).

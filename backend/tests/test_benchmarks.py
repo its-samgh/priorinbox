@@ -28,6 +28,11 @@ async def test_fixture_benchmark_and_resume_rejection(tmp_path):
     assert "FIXTURE ONLY" in (tmp_path / "comparison.md").read_text()
     with pytest.raises(ValueError, match="Fixture"):
         resume(tmp_path)
+    report["model_digest"] = "different-model-weights"
+    (tmp_path / "two_stage.json").write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="different"):
+        load_pair(tmp_path)
+    report["model_digest"] = None
     report["dataset_sha256"] = "different"
     (tmp_path / "two_stage.json").write_text(json.dumps(report))
     with pytest.raises(ValueError, match="different"):

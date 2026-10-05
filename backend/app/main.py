@@ -90,9 +90,10 @@ def create_app(config: Config | None = None, run_worker: bool = True) -> FastAPI
     @app.put("/api/settings")
     async def save_settings(settings: Settings, request: Request):
         w = request.app.state.worker
-        async with w.lock:
-            w.store.save_settings(settings)
-            w.settings = settings
+        # These synchronous operations are atomic within the single event loop.
+        # Do not wait behind an inference batch that may take several minutes.
+        w.store.save_settings(settings)
+        w.settings = settings
         return settings
 
     @app.get("/api/models")

@@ -9,6 +9,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+from backend.app.classifier import pipeline as pipeline_module
 from backend.app.classifier.pipeline import ClassificationError, Pipeline
 from backend.app.config import Config
 from backend.app.models.schemas import IncomingMessage, Label, Settings
@@ -38,9 +39,21 @@ async def run(args: argparse.Namespace) -> dict:
     )
     pipeline = Pipeline(config.ollama_url, args.fixture)
     results = []
+    model_digest = None
+    ollama_version = None
+    classifier_hash = hashlib.sha256(Path(pipeline_module.__file__).read_bytes()).hexdigest()
     try:
         if not args.fixture:
             await pipeline.check_model(settings.model)
+            tags = await pipeline.client.get("/api/tags")
+            tags.raise_for_status()
+            canonical = settings.model if ":" in settings.model else settings.model + ":latest"
+            model_digest = next(
+                item["digest"] for item in tags.json()["models"] if item["name"] == canonical
+            )
+            version = await pipeline.client.get("/api/version")
+            version.raise_for_status()
+            ollama_version = version.json()["version"]
         start = time.perf_counter()
         for row in rows:
             message = IncomingMessage.model_validate(row)
@@ -60,15 +73,20 @@ async def run(args: argparse.Namespace) -> dict:
             except ClassificationError as exc:
                 record.update(llm_calls=exc.calls, inference_ms=exc.inference_ms)
             results.append(record)
+            if len(results) % 25 == 0:
+                print(f"{args.pipeline}: {len(results)}/{len(rows)} processed", flush=True)
         elapsed = time.perf_counter() - start
     finally:
         await pipeline.close()
     metrics = summarize(results, elapsed)
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "pipeline": args.pipeline,
         "fixture": args.fixture,
         "model": settings.model,
+        "model_digest": model_digest,
+        "ollama_version": ollama_version,
+        "classifier_sha256": classifier_hash,
         "threshold": settings.threshold,
         "context_messages": settings.context_messages,
         "dataset_sha256": hashlib.sha256(raw).hexdigest(),

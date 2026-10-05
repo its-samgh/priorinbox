@@ -52,9 +52,10 @@ class Worker:
                 self.source_error = "Ingestion failed; check source configuration. Will retry."
             if not self.config.fixture:
                 try:
-                    if self.verified_model != self.settings.model:
-                        await self.pipeline.check_model(self.settings.model)
-                        self.verified_model = self.settings.model
+                    model = self.settings.model
+                    if self.verified_model != model:
+                        await self.pipeline.check_model(model)
+                        self.verified_model = model
                     self.health = "Local Ollama ready"
                 except Exception:
                     self.health = (
@@ -63,9 +64,17 @@ class Worker:
                     )
                     return
             for message in self.store.pending():
+                settings = self.settings.model_copy()
+                if not self.config.fixture and self.verified_model != settings.model:
+                    try:
+                        await self.pipeline.check_model(settings.model)
+                        self.verified_model = settings.model
+                    except Exception:
+                        self.health = f"Local model unavailable. Run: ollama pull {settings.model}"
+                        return
                 try:
-                    context = self.store.context(message, self.settings.context_messages)
-                    result = await self.pipeline.classify(message, context, self.settings)
+                    context = self.store.context(message, settings.context_messages)
+                    result = await self.pipeline.classify(message, context, settings)
                     self.store.save_result(message.id, result)
                     if await self.notifier.send(message, result, self.settings):
                         self.store.notified(message.id)

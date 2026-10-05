@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 
@@ -223,3 +224,45 @@ def test_failed_inference_is_counted():
     assert metrics["llm_calls"] == 3
     assert metrics["ollama_invocation_pct"] == 100
     assert metrics["messages_processed"] == 0
+
+
+async def test_settings_save_does_not_wait_for_inference_batch(tmp_path):
+    app = create_app(
+        Config(database_path=tmp_path / "responsive.db", fixture=True), run_worker=False
+    )
+    async with app.router.lifespan_context(app):
+        async with app.state.worker.lock:
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://localhost"
+            ) as client:
+                response = await asyncio.wait_for(
+                    client.put(
+                        "/api/settings",
+                        json=Settings(threshold=0.8, notifications=False).model_dump(),
+                        headers={"X-PriorInbox": "local"},
+                    ),
+                    timeout=0.5,
+                )
+                assert response.status_code == 200
+                assert app.state.worker.settings.threshold == 0.8
+
+
+async def test_model_changed_during_validation_is_checked_before_inference(monkeypatch):
+    worker = Worker(Config(fixture=False, persist_raw=False))
+    checked = []
+    original_model = worker.settings.model
+
+    async def check_model(model):
+        checked.append(model)
+        if len(checked) == 1:
+            worker.settings = Settings(model="another-local-model", notifications=False)
+        else:
+            raise ValueError("Replacement model does not have local weights")
+
+    monkeypatch.setattr(worker.pipeline, "check_model", check_model)
+    await worker.tick()
+    assert checked == [original_model, "another-local-model"]
+    assert worker.verified_model == original_model
+    assert all(row["status"] == "pending" for row in worker.store.records())
+    assert "unavailable" in worker.health
+    await worker.close()

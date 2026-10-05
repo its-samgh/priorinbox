@@ -7,6 +7,9 @@ PAIRED = (
     "dataset_kind",
     "dataset_size",
     "model",
+    "model_digest",
+    "ollama_version",
+    "classifier_sha256",
     "threshold",
     "context_messages",
     "fixture",
@@ -19,6 +22,8 @@ PAIRED = (
 def load_pair(directory: Path) -> tuple[dict, dict]:
     a = json.loads((directory / "baseline.json").read_text())
     b = json.loads((directory / "two_stage.json").read_text())
+    if any(key not in a or key not in b for key in PAIRED):
+        raise ValueError("Benchmark metadata is outdated; rerun both pipelines")
     if any(a[key] != b[key] for key in PAIRED):
         raise ValueError("Cannot compare different datasets, models, configurations or machines")
     if a["pipeline"] != "baseline_llm" or b["pipeline"] != "two_stage":
@@ -54,6 +59,12 @@ def compare_if_ready(directory: Path) -> None:
         "FIXTURE ONLY — not evidence of AI performance."
         if a["fixture"]
         else "Single sequential runs; model warm state uncontrolled. Repeat in alternating order.",
+        "",
+        f"Ollama version: {a['ollama_version'] or 'fixture'}; model digest: "
+        f"`{a['model_digest'] or 'fixture'}`.",
+        f"Classifier SHA-256: `{a['classifier_sha256']}`.",
+        f"Machine: {a['machine']['system']} {a['machine']['architecture']}; "
+        f"Python {a['machine']['python']}.",
         "",
         "| Metric | Baseline | Two-stage |",
         "|---|---:|---:|",

@@ -23,3 +23,15 @@ real-world recall. Settings changes affect future messages only.
 Instagram uses only Instagram Login / graph.instagram.com official conversations
 endpoints. OAuth provisioning is manual; consumer accounts are unsupported. Polling
 is best effort, not a complete message archive. No browser automation or cookies.
+
+Settings writes remain responsive during inference. The worker captures a settings
+snapshot for each message and verifies any changed model before sending the message
+to Ollama. Notification privacy switches take effect at the next notification.
+
+Benchmark comparisons also require matching model digests, Ollama versions and
+classifier code hashes. These metadata are collected before timing begins.
+
+Real-model validation must distinguish actionability from urgency: routine work,
+school and financial requests still need attention without an explicit deadline.
+The score is a model-estimated attention ranking, not a calibrated probability.
+High precision alone is insufficient when the product aims to preserve recall.
