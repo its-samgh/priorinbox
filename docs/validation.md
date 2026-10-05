@@ -112,3 +112,11 @@ choose a model/threshold for an actual inbox.
 - Actual screenshot saved at `docs/screenshots/local-ai-inbox.jpg`, with the mock
   ingestion badge, real inference state and OS authorization warning visible.
 - Public repository: https://github.com/its-samgh/priorinbox.
+
+### Hosted CI
+
+[GitHub Actions run 37355207339](https://github.com/its-samgh/priorinbox/actions/runs/37355207339)
+passed on 2026-10-05 for implementation commit `d6a6ae7`. Locked installation,
+lint, Python/TypeScript checks, all 47 tests, production build and both fixture
+benchmark mechanics passed on Ubuntu with Python 3.12 and Node 22. Hosted CI does
+not run real inference; the actual local model measurements above are separate.
